@@ -1,0 +1,43 @@
+--Create a Warehouse
+
+Create or Replace warehouse my_wh warehouse_size='Large';
+
+--Create a Database
+Create or Replace Database Frosty_Friday;
+
+--Create a Schema
+Create or Replace Schema FF_SCEHMA;
+
+--Create external stage
+create or replace stage week1_stg url='s3://frostyfridaychallenges/challenge_1/';
+
+--List stage
+list @week1_stg;
+
+--Create a file format to load csv data as variant to check what is the schema
+CREATE FILE FORMAT VARIANT_FORMAT
+TYPE='CSV',FIELD_DELIMITER=none;
+
+--Validate data. Seems only one column
+select $1 from @week1_stg (file_format=>'VARIANT_FORMAT');
+
+--Create a stage table to load stage data
+CREATE OR REPLACE TABLE MY_CSV_FILE
+(
+CUSTOM_TEXT TEXT,
+LOAD_TMSP TIMESTAMP_NTZ(9));
+
+
+--Copy into table
+COPY INTO MY_CSV_FILE
+FROM 
+(SELECT $1,CURRENT_TIMESTAMP() FROM @WEEK1_STG)
+FILE_FORMAT='VARIANT_FORMAT'
+;
+
+--Validate the data
+SELECT * FROM MY_CSV_FILE;
+
+--Validate Load History
+SELECT * FROM INFORMATION_SCHEMA.LOAD_HISTORY;
+
