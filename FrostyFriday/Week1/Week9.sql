@@ -1,0 +1,38 @@
+--Grant access to roles
+GRANT USAGE ON DATABASE FROSTY_FRIDAY TO ROLE FOO1;
+GRANT USAGE ON DATABASE FROSTY_FRIDAY TO ROLE FOO2;
+
+GRANT USAGE ON SCHEMA FROSTY_FRIDAY.FF_SCEHMA TO ROLE FOO1;
+GRANT USAGE ON SCHEMA FROSTY_FRIDAY.FF_SCEHMA TO ROLE FOO2;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA FROSTY_FRIDAY.FF_SCEHMA TO ROLE FOO1;
+GRANT SELECT ON ALL TABLES IN SCHEMA FROSTY_FRIDAY.FF_SCEHMA TO ROLE FOO2;
+
+GRANT USAGE ON WAREHOUSE MY_WH TO ROLE FOO1;
+GRANT USAGE ON WAREHOUSE MY_WH TO ROLE FOO2;
+
+--Create tag
+CREATE OR REPLACE TAG Sensitive_Data_Tag allowed_values 'L1','L2';
+
+--Create Masking Policy
+CREATE OR REPLACE MASKING POLICY CUSTOM_POLICY AS(VAL STRING) RETURNS STRING->
+CASE WHEN SYSTEM$GET_TAG_ON_CURRENT_COLUMN('Sensitive_Data_Tag')='L1' AND is_role_in_session('FOO1') THEN VAL
+WHEN IS_ROLE_IN_SESSION('FOO2') THEN VAL
+ELSE '******' END;
+
+alter tag Sensitive_Data_Tag set masking policy CUSTOM_POLICY;
+
+
+ALTER TABLE data_to_be_masked MODIFY FIRST_NAME SET TAG Sensitive_Data_Tag='L1';
+ALTER TABLE data_to_be_masked MODIFY last_name SET TAG Sensitive_Data_Tag='L2';
+
+
+--Validate 
+use role accountadmin;
+select * from data_to_be_masked;
+
+use role foo1;
+select * from data_to_be_masked;
+
+use role foo2;
+select * from data_to_be_masked;
